@@ -1,0 +1,14 @@
+# Секреты
+.env
+telegram.env
+*.db
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
