@@ -337,6 +337,12 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    init_db()
-    print("🚀 Mini App сервер запущен на http://localhost:8000")
+    import threading
+    
+    # Запускаем бота в фоновом потоке
+    from bot.bot_main import main as run_bot
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+    
+    # Запускаем сервер
     uvicorn.run(app, host="0.0.0.0", port=8000)
