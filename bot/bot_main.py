@@ -8,13 +8,14 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 # --- КОНФИГУРАЦИЯ ---
 TOKEN = os.getenv("BOT_TOKEN")
 
-# ... остальной код ...
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 
 # --- БАЗА ДАННЫХ ---
 def init_db():
     conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
+    
+    # Таблица пользователей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
@@ -26,6 +27,8 @@ def init_db():
             registered_at TEXT
         )
     ''')
+    
+    # Таблица логов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +38,18 @@ def init_db():
             created_at TEXT
         )
     ''')
+    
+    # Таблица NFT бейджей
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS nft_badges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id INTEGER,
+            badge_type TEXT,
+            badge_name TEXT,
+            issued_at TEXT
+        )
+    ''')
+    
     conn.commit()
     conn.close()
     print("✅ База данных готова")
@@ -168,23 +183,18 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     log_action(telegram_id, "open_wallet_menu")
     
-    # ВРЕМЕННЫЙ URL: замените на ваш ngrok URL позже
-    # Сейчас для теста используем localhost (не будет работать в Telegram)
-    web_app_url = "https://telegram-bot1.amvera.cloud"  
+    # URL вашего Mini App на Amvera
+    WEB_APP_URL = "https://telegram-bot1.amvera.cloud"
     
-    keyboard = [[InlineKeyboardButton("🔗 Подключить кошелёк", web_app=WebAppInfo(url=web_app_url))]]
+    keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
         "🔗 *Привязка криптокошелька*\n\n"
-        "Нажмите кнопку ниже, чтобы подключить ваш MetaMask кошелёк.\n\n"
-        "⚠️ *После привязки вы получите:*\n"
+        "Нажмите кнопку ниже, чтобы открыть Mini App и подключить кошелёк.\n\n"
+        "После привязки вы получите:\n"
         "• +100 FA токенов\n"
-        "• NFT бейдж '🔗 Pioneer'\n\n"
-        "📌 Убедитесь, что у вас установлен MetaMask!\n\n"
-        "⚙️ *Как установить MetaMask:*\n"
-        "• На компьютере: расширение для Chrome/Firefox\n"
-        "• На телефоне: приложение MetaMask",
+        "• NFT бейдж 'Pioneer'",
         parse_mode="Markdown",
         reply_markup=reply_markup
     )
@@ -212,25 +222,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-
-async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-    log_action(telegram_id, "open_wallet_menu")
-    
-    # Замените на ваш реальный URL при публикации
-    # Для локального теста используйте ngrok
-    WEB_APP_URL = "https://telegram-bot1.amvera.cloud"
-    
-    keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        "🔗 *Привязка криптокошелька*\n\n"
-        "Нажмите кнопку ниже, чтобы открыть Mini App и подключить кошелёк.\n\n"
-        "После привязки вы получите:\n"
-        "• +100 FA токенов\n"
-        "• NFT бейдж 'Pioneer'",
-        parse_mode="Markdown",
-        reply_markup=reply_markup
-    )
