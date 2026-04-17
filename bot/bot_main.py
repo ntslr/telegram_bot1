@@ -11,8 +11,11 @@ TOKEN = os.getenv("BOT_TOKEN")
 logging.basicConfig(level=logging.INFO)
 
 # --- БАЗА ДАННЫХ ---
+DB_PATH = '/data/students.db'
+
 def init_db():
-    conn = sqlite3.connect('/data/students.db')
+    """Создаёт все таблицы, если они не существуют"""
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     # Таблица пользователей
@@ -52,10 +55,10 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print("✅ База данных готова")
+    print("✅ База данных готова (таблицы созданы)")
 
 def add_user(telegram_id, username, first_name):
-    conn = sqlite3.connect('/data/students.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
     user = cursor.fetchone()
@@ -71,7 +74,7 @@ def add_user(telegram_id, username, first_name):
     return False
 
 def log_action(telegram_id, action, details=""):
-    conn = sqlite3.connect('/data/students.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO logs (telegram_id, action, details, created_at)
@@ -81,20 +84,12 @@ def log_action(telegram_id, action, details=""):
     conn.close()
 
 def get_balance(telegram_id):
-    conn = sqlite3.connect('/data/students.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT fa_balance FROM users WHERE telegram_id = ?', (telegram_id,))
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else 0
-
-def get_wallet_status(telegram_id):
-    conn = sqlite3.connect('/data/students.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT wallet_address, wallet_verified FROM users WHERE telegram_id = ?', (telegram_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return result if result else (None, 0)
 
 # --- КОМАНДЫ ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -135,7 +130,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
-    conn = sqlite3.connect('/data/students.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT first_name, username, wallet_address, wallet_verified, fa_balance, registered_at FROM users WHERE telegram_id = ?', (telegram_id,))
     user = cursor.fetchone()
@@ -183,7 +178,6 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     log_action(telegram_id, "open_wallet_menu")
     
-    # URL вашего Mini App на Amvera
     WEB_APP_URL = "https://telegram-bot1.amvera.cloud"
     
     keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
@@ -201,7 +195,10 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- ЗАПУСК ---
 def main():
+    print("🔄 Инициализация базы данных...")
     init_db()
+    
+    print("🔄 Запуск бота...")
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -210,14 +207,7 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("wallet", wallet_command))
     
-    print("🤖 Бот запущен!")
-    print("📁 База данных: students.db")
-    print("\n📌 Доступные команды:")
-    print("  /start   - начать")
-    print("  /balance - баланс")
-    print("  /profile - профиль")
-    print("  /wallet  - привязать кошелёк")
-    print("  /help    - помощь")
+    print("🤖 Бот запущен! Напишите /start в Telegram")
     app.run_polling()
 
 if __name__ == "__main__":
