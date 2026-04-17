@@ -1,11 +1,14 @@
 import logging
 import sqlite3
+import os
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+# --- КОНФИГУРАЦИЯ ---
 TOKEN = os.getenv("BOT_TOKEN")
 
+# ... остальной код ...
 logging.basicConfig(level=logging.ERROR)
 
 # --- БАЗА ДАННЫХ ---
