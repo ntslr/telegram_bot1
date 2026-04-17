@@ -167,7 +167,7 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # ВРЕМЕННЫЙ URL: замените на ваш ngrok URL позже
     # Сейчас для теста используем localhost (не будет работать в Telegram)
-    web_app_url = "https://unorientally-unstrengthening-barb.ngrok-free.dev"  
+    web_app_url = "https://telegram-bot1.amvera.cloud"  
     
     keyboard = [[InlineKeyboardButton("🔗 Подключить кошелёк", web_app=WebAppInfo(url=web_app_url))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -217,7 +217,7 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Замените на ваш реальный URL при публикации
     # Для локального теста используйте ngrok
-    WEB_APP_URL = "https://ВАШ-URL.ngrok-free.dev/"
+    WEB_APP_URL = "https://telegram-bot1.amvera.cloud"
     
     keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
