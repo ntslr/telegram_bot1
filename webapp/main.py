@@ -19,7 +19,7 @@ class VerifyRequest(BaseModel):
 
 # --- Функции БД ---
 def init_db():
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     
     # Проверяем и добавляем колонки если нужно

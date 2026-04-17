@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.ERROR)
 
 # --- БАЗА ДАННЫХ ---
 def init_db():
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -37,7 +37,7 @@ def init_db():
     print("✅ База данных готова")
 
 def add_user(telegram_id, username, first_name):
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
     user = cursor.fetchone()
@@ -53,7 +53,7 @@ def add_user(telegram_id, username, first_name):
     return False
 
 def log_action(telegram_id, action, details=""):
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO logs (telegram_id, action, details, created_at)
@@ -63,7 +63,7 @@ def log_action(telegram_id, action, details=""):
     conn.close()
 
 def get_balance(telegram_id):
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('SELECT fa_balance FROM users WHERE telegram_id = ?', (telegram_id,))
     result = cursor.fetchone()
@@ -71,7 +71,7 @@ def get_balance(telegram_id):
     return result[0] if result else 0
 
 def get_wallet_status(telegram_id):
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('SELECT wallet_address, wallet_verified FROM users WHERE telegram_id = ?', (telegram_id,))
     result = cursor.fetchone()
@@ -117,7 +117,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('SELECT first_name, username, wallet_address, wallet_verified, fa_balance, registered_at FROM users WHERE telegram_id = ?', (telegram_id,))
     user = cursor.fetchone()
