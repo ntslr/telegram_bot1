@@ -334,29 +334,3 @@ HTML_PAGE = """
 @app.get("/wallet")
 async def root():
     return HTMLResponse(HTML_PAGE)
-
-if __name__ == "__main__":
-    import uvicorn
-    import threading
-    import logging
-    
-    # Настройка логирования
-    logging.basicConfig(level=logging.INFO)
-    
-    def run_bot_with_logging():
-        try:
-            print("🔄 Запускаем Telegram-бота...")
-            from bot.bot_main import main as run_bot
-            run_bot()
-        except Exception as e:
-            print(f"❌ ОШИБКА БОТА: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    # Запускаем бота в фоновом потоке
-    bot_thread = threading.Thread(target=run_bot_with_logging)
-    bot_thread.start()
-    
-    print("🚀 Запуск FastAPI сервера...")
-    # Запускаем сервер
-    uvicorn.run(app, host="0.0.0.0", port=8000)
