@@ -44,7 +44,7 @@ def init_db():
     conn.close()
 
 def get_user(telegram_id):
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('SELECT first_name, wallet_address, wallet_verified, fa_balance FROM users WHERE telegram_id = ?', (telegram_id,))
     user = cursor.fetchone()
@@ -71,7 +71,7 @@ async def get_profile(telegram_id: int):
 async def get_nonce(request: NonceRequest):
     nonce = secrets.token_hex(32)
     
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     cursor.execute('''
         INSERT OR REPLACE INTO wallet_nonce (telegram_id, nonce, created_at)
@@ -85,7 +85,7 @@ async def get_nonce(request: NonceRequest):
 
 @app.post("/api/verify_wallet")
 async def verify_wallet(request: VerifyRequest):
-    conn = sqlite3.connect('students.db')
+    conn = sqlite3.connect('/data/students.db')
     cursor = conn.cursor()
     
     cursor.execute('SELECT nonce FROM wallet_nonce WHERE telegram_id = ?', (request.telegram_id,))
