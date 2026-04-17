@@ -167,7 +167,7 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # ВРЕМЕННЫЙ URL: замените на ваш ngrok URL позже
     # Сейчас для теста используем localhost (не будет работать в Telegram)
-    web_app_url = "https://unorientally-unstrengthening-barb.ngrok-free.dev"  # 👈 ЗАМЕНИТЕ ПОТОМ!
+    web_app_url = "https://unorientally-unstrengthening-barb.ngrok-free.dev"  
     
     keyboard = [[InlineKeyboardButton("🔗 Подключить кошелёк", web_app=WebAppInfo(url=web_app_url))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -209,3 +209,25 @@ def main():
 
 if __name__ == "__main__":
     main()
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+
+async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = update.effective_user.id
+    log_action(telegram_id, "open_wallet_menu")
+    
+    # Замените на ваш реальный URL при публикации
+    # Для локального теста используйте ngrok
+    WEB_APP_URL = "https://ВАШ-URL.ngrok-free.dev/"
+    
+    keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "🔗 *Привязка криптокошелька*\n\n"
+        "Нажмите кнопку ниже, чтобы открыть Mini App и подключить кошелёк.\n\n"
+        "После привязки вы получите:\n"
+        "• +100 FA токенов\n"
+        "• NFT бейдж 'Pioneer'",
+        parse_mode="Markdown",
+        reply_markup=reply_markup
+    )
