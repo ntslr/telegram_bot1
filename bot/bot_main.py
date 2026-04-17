@@ -4,7 +4,7 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-TOKEN = "8781672375:AAGHVtBgyumx8YI73SQvw4jT0ayQyy2uV7g"
+TOKEN = os.getenv("BOT_TOKEN")
 
 logging.basicConfig(level=logging.ERROR)
 
