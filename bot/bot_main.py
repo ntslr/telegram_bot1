@@ -311,7 +311,7 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     log_action(telegram_id, "open_wallet_menu")
     
-    WEB_APP_URL = "https://telegram-bot1.amvera.cloud"
+    WEB_APP_URL = "https://telegram-bot1-netslayer7.waw0.amvera.tech"
     
     keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
