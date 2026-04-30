@@ -6,9 +6,12 @@ from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-# --- КОНФИГУРАЦИЯ ---
+# ==================== КОНФИГУРАЦИЯ ====================
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_IDS = [967932083]  # ЗАМЕНИТЕ НА ВАШ TELEGRAM ID
+ADMIN_IDS = [967932083]  # ID администраторов
+
+# Ссылка на Mini App
+WEB_APP_URL = "https://telegram-bot1-netslayer7.waw0.amvera.tech/"
 
 # Настройка БД
 DB_PATH = '/data/students.db'
@@ -257,7 +260,7 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     balance = get_balance(telegram_id)
     log_action(telegram_id, "check_balance")
-    await update.message.reply_text(f"💰 Твой баланс: *{balance} FA*", parse_mode="Markdown")
+    await update.message.reply_text(f"💰 Твой баланс: {balance} FA")
 
 async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
@@ -271,25 +274,28 @@ async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if user:
         first_name, username, wallet, wallet_verified, balance, registered_at = user
-        wallet_status = f"✅ {wallet[:6]}...{wallet[-4:]}" if wallet_verified and wallet else "❌ Не привязан"
+        if wallet_verified and wallet:
+            wallet_status = f"✅ {wallet[:6]}...{wallet[-4:]}"
+        else:
+            wallet_status = "❌ Не привязан"
+        
         badges_text = "\n".join([f"• {b[0]}" for b in badges]) if badges else "• Нет бейджей"
         
         await update.message.reply_text(
-            f"📱 *Мой профиль*\n\n"
+            f"📱 Мой профиль\n\n"
             f"👤 Имя: {first_name}\n"
             f"🆔 Username: @{username}\n"
             f"💰 Баланс: {balance} FA\n"
             f"🔗 Кошелёк: {wallet_status}\n"
             f"🏆 Бейджи:\n{badges_text}\n"
-            f"📅 Регистрация: {registered_at[:10]}",
-            parse_mode="Markdown"
+            f"📅 Регистрация: {registered_at[:10]}"
         )
     else:
         await update.message.reply_text("❌ Профиль не найден. Напишите /start")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 *Команды бота:*\n\n"
+        "🤖 Команды бота:\n\n"
         "/start - начать работу\n"
         "/balance - проверить баланс\n"
         "/profile - мой профиль\n"
@@ -298,27 +304,35 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/vote <id> <номер> - проголосовать\n"
         "/results <id> - результаты голосования\n"
         "/privacy - политика конфиденциальности\n"
-        "/help - помощь",
-        parse_mode="Markdown"
+        "/help - помощь"
     )
 
 async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     log_action(telegram_id, "open_wallet_menu")
     
-    WEB_APP_URL = "https://telegram-bot1-netslayer7.waw0.amvera.tech/"
-    
     keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "🔗 *Привязка криптокошелька*\n\n"
+        "🔗 Привязка криптокошелька\n\n"
         "Нажмите кнопку ниже, чтобы открыть Mini App и подключить кошелёк.\n\n"
         "После привязки вы получите:\n"
         "• +100 FA токенов\n"
         "• NFT бейдж 'Pioneer'",
-        parse_mode="Markdown",
         reply_markup=reply_markup
+    )
+
+async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📋 Политика конфиденциальности\n\n"
+        "Бот собирает следующие данные:\n"
+        "- Telegram ID и имя пользователя\n"
+        "- Адрес криптокошелька (если привязан)\n"
+        "- История действий (команды, голосования)\n\n"
+        "Данные используются только для работы бота\n"
+        "и не передаются третьим лицам.\n\n"
+        "По вопросам удаления данных пишите администратору."
     )
 
 # ==================== КОМАНДЫ ГОЛОСОВАНИЙ ====================
@@ -329,31 +343,30 @@ async def list_votes_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     votings = get_active_votings()
     if not votings:
-        await update.message.reply_text("📭 *Активных голосований нет*\n\nПриходите позже!", parse_mode="Markdown")
+        await update.message.reply_text("📭 Активных голосований нет\n\nПриходите позже!")
         return
     
-    message = "🗳️ *Активные голосования*\n\n"
+    message = "🗳️ Активные голосования\n\n"
     for v in votings:
-        message += f"*{v['id']}. {v['title']}*\n"
+        message += f"{v['id']}. {v['title']}\n"
         message += f"📝 {v['description'][:100]}\n"
         message += f"📊 Участников: {v['total_votes']}\n"
         message += f"📅 До: {v['end_at'][:16]}\n\n"
     
-    message += "Чтобы проголосовать: `/vote <id> <номер>`\n"
-    message += "Пример: `/vote 1 2`\n"
-    message += "Результаты: `/results <id>`"
+    message += "Чтобы проголосовать: /vote <id> <номер>\n"
+    message += "Пример: /vote 1 2\n"
+    message += "Результаты: /results <id>"
     
-    await update.message.reply_text(message, parse_mode="Markdown")
+    await update.message.reply_text(message)
 
 async def vote_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     
     if len(context.args) < 2:
         await update.message.reply_text(
-            "❌ *Как голосовать:*\n`/vote <id_голосования> <номер_варианта>`\n\n"
-            "Пример: `/vote 1 2`\n"
-            "Список голосований: `/list_votes`",
-            parse_mode="Markdown"
+            "❌ Как голосовать:\n/vote <id_голосования> <номер_варианта>\n\n"
+            "Пример: /vote 1 2\n"
+            "Список голосований: /list_votes"
         )
         return
     
@@ -361,7 +374,7 @@ async def vote_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         voting_id = int(context.args[0])
         option_index = int(context.args[1])
     except ValueError:
-        await update.message.reply_text("❌ Используйте числа! Пример: `/vote 1 2`", parse_mode="Markdown")
+        await update.message.reply_text("❌ Используйте числа! Пример: /vote 1 2")
         return
     
     voting = get_voting_by_id(voting_id)
@@ -387,11 +400,10 @@ async def vote_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if success:
         selected_option = voting['options'][option_index - 1]
         await update.message.reply_text(
-            f"✅ *Ваш голос учтён!*\n\n"
-            f"🗳️ *{voting['title']}*\n"
-            f"📌 Вы выбрали: *{selected_option}*\n\n"
-            f"💰 +10 FA токенов за участие!",
-            parse_mode="Markdown"
+            f"✅ Ваш голос учтён!\n\n"
+            f"🗳️ {voting['title']}\n"
+            f"📌 Вы выбрали: {selected_option}\n\n"
+            f"💰 +10 FA токенов за участие!"
         )
     else:
         await update.message.reply_text("❌ Ошибка при сохранении голоса")
@@ -401,17 +413,16 @@ async def results_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if len(context.args) < 1:
         await update.message.reply_text(
-            "📊 *Как посмотреть результаты:*\n`/results <id_голосования>`\n\n"
-            "Пример: `/results 1`\n"
-            "Список голосований: `/list_votes`",
-            parse_mode="Markdown"
+            "📊 Как посмотреть результаты:\n/results <id_голосования>\n\n"
+            "Пример: /results 1\n"
+            "Список голосований: /list_votes"
         )
         return
     
     try:
         voting_id = int(context.args[0])
     except ValueError:
-        await update.message.reply_text("❌ Используйте число! Пример: `/results 1`", parse_mode="Markdown")
+        await update.message.reply_text("❌ Используйте число! Пример: /results 1")
         return
     
     voting = get_voting_by_id(voting_id)
@@ -423,8 +434,8 @@ async def results_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_votes = sum(results.values()) if results else 0
     options = voting['options']
     
-    message = f"📊 *Результаты голосования #{voting_id}*\n\n"
-    message += f"*{voting['title']}*\n"
+    message = f"📊 Результаты голосования #{voting_id}\n\n"
+    message += f"{voting['title']}\n"
     message += f"Статус: {'🟢 Активно' if voting['status'] == 'active' else '🔴 Закрыто'}\n"
     message += f"Всего голосов: {total_votes}\n\n"
     
@@ -442,22 +453,7 @@ async def results_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message += "🏁 Голосование завершено"
     
     log_action(telegram_id, "view_results", f"voting_{voting_id}")
-    await update.message.reply_text(message, parse_mode="Markdown")
-
-# ==================== КОМАНДА PRIVACY ====================
-
-async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "📋 *Политика конфиденциальности*\n\n"
-        "Бот собирает следующие данные:\n"
-        "• Telegram ID и имя пользователя\n"
-        "• Адрес криптокошелька (если привязан)\n"
-        "• История действий (команды, голосования)\n\n"
-        "Данные используются только для работы бота\n"
-        "и не передаются третьим лицам.\n\n"
-        "По вопросам удаления данных пишите администратору.",
-        parse_mode="Markdown"
-    )
+    await update.message.reply_text(message)
 
 # ==================== АДМИН-КОМАНДЫ ====================
 
@@ -480,12 +476,11 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.close()
     
     await update.message.reply_text(
-        f"📊 *Статистика*\n\n"
+        f"📊 Статистика\n\n"
         f"👥 Пользователей: {total_users}\n"
         f"💎 Всего FA: {total_fa}\n"
         f"🔗 Привязали кошелёк: {verified}\n"
-        f"🗳️ Голосований создано: {total_votings}",
-        parse_mode="Markdown"
+        f"🗳️ Голосований создано: {total_votings}"
     )
 
 async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -496,7 +491,7 @@ async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     message_text = " ".join(context.args)
     if not message_text:
-        await update.message.reply_text("📢 Использование: `/broadcast Текст`", parse_mode="Markdown")
+        await update.message.reply_text("📢 Использование: /broadcast Текст")
         return
     
     conn = sqlite3.connect(DB_PATH)
@@ -508,7 +503,7 @@ async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     success = 0
     for user in users:
         try:
-            await context.bot.send_message(chat_id=user[0], text=f"📢 *Массовое уведомление*\n\n{message_text}", parse_mode="Markdown")
+            await context.bot.send_message(chat_id=user[0], text=f"📢 Массовое уведомление\n\n{message_text}")
             success += 1
         except:
             pass
@@ -523,7 +518,7 @@ async def admin_add_fa(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if len(context.args) < 2:
-        await update.message.reply_text("💰 Использование: `/add_fa TELEGRAM_ID КОЛИЧЕСТВО`", parse_mode="Markdown")
+        await update.message.reply_text("💰 Использование: /add_fa TELEGRAM_ID КОЛИЧЕСТВО")
         return
     
     try:
@@ -558,11 +553,10 @@ async def admin_create_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if len(context.args) < 1:
         await update.message.reply_text(
-            "📝 *Создание голосования:*\n"
-            "`/create_vote Название | Описание | Вариант1,Вариант2,Вариант3 | дни`\n\n"
+            "📝 Создание голосования:\n"
+            "/create_vote Название | Описание | Вариант1,Вариант2,Вариант3 | дни\n\n"
             "Пример:\n"
-            "`/create_vote Выбор | Лучшая платформа? | Telegram,Discord,WhatsApp | 7`",
-            parse_mode="Markdown"
+            "/create_vote Выбор | Лучшая платформа? | Telegram,Discord,WhatsApp | 7"
         )
         return
     
@@ -570,7 +564,7 @@ async def admin_create_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parts = full_text.split("|")
     
     if len(parts) < 3:
-        await update.message.reply_text("❌ Неверный формат. Используйте разделитель `|`")
+        await update.message.reply_text("❌ Неверный формат. Используйте разделитель |")
         return
     
     title = parts[0].strip()
@@ -587,13 +581,12 @@ async def admin_create_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     options_text = "\n".join([f"{i+1}. {opt}" for i, opt in enumerate(options)])
     await update.message.reply_text(
-        f"✅ *Голосование создано!*\n\n"
+        f"✅ Голосование создано!\n\n"
         f"ID: {voting_id}\n"
         f"Название: {title}\n"
         f"Варианты:\n{options_text}\n"
         f"Длительность: {days} дней\n\n"
-        f"Голосовать: `/vote {voting_id} <номер>`",
-        parse_mode="Markdown"
+        f"Голосовать: /vote {voting_id} <номер>"
     )
     
     conn = sqlite3.connect(DB_PATH)
@@ -606,8 +599,7 @@ async def admin_create_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await context.bot.send_message(
                 chat_id=user[0],
-                text=f"🗳️ *НОВОЕ ГОЛОСОВАНИЕ!*\n\n*{title}*\n{description}\n\nГолосовать: `/vote {voting_id} <номер>`",
-                parse_mode="Markdown"
+                text=f"🗳️ НОВОЕ ГОЛОСОВАНИЕ!\n\n{title}\n{description}\n\nГолосовать: /vote {voting_id} <номер>"
             )
         except:
             pass
@@ -619,7 +611,7 @@ async def admin_close_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if len(context.args) < 1:
-        await update.message.reply_text("📝 Использование: `/close_vote <id>`", parse_mode="Markdown")
+        await update.message.reply_text("📝 Использование: /close_vote <id>")
         return
     
     try:
@@ -641,15 +633,15 @@ async def admin_close_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_commands(app: Application):
     commands = [
-        ("start", "🚀 Запустить бота и получить 100 FA"),
-        ("balance", "💰 Проверить баланс FA токенов"),
-        ("profile", "📱 Мой профиль и NFT бейджи"),
-        ("wallet", "🔗 Привязать криптокошелёк"),
-        ("list_votes", "🗳️ Список активных голосований"),
-        ("vote", "🗳️ Проголосовать: /vote <id> <номер>"),
-        ("results", "📊 Результаты голосования"),
-        ("privacy", "📋 Политика конфиденциальности"),
-        ("help", "❓ Помощь по командам"),
+        ("start", "Запустить бота и получить 100 FA"),
+        ("balance", "Проверить баланс FA токенов"),
+        ("profile", "Мой профиль и NFT бейджи"),
+        ("wallet", "Привязать криптокошелёк"),
+        ("list_votes", "Список активных голосований"),
+        ("vote", "Проголосовать: /vote <id> <номер>"),
+        ("results", "Результаты голосования"),
+        ("privacy", "Политика конфиденциальности"),
+        ("help", "Помощь по командам"),
     ]
     await app.bot.set_my_commands([(cmd, desc) for cmd, desc in commands])
     print("✅ Команды зарегистрированы в Telegram")
@@ -665,10 +657,11 @@ def main():
     app.add_handler(CommandHandler("profile", profile_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("wallet", wallet_command))
+    app.add_handler(CommandHandler("privacy", privacy_command))
+    
     app.add_handler(CommandHandler("list_votes", list_votes_command))
     app.add_handler(CommandHandler("vote", vote_command))
     app.add_handler(CommandHandler("results", results_command))
-    app.add_handler(CommandHandler("privacy", privacy_command))
     
     app.add_handler(CommandHandler("stats", admin_stats))
     app.add_handler(CommandHandler("broadcast", admin_broadcast))
