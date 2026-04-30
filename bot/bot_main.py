@@ -659,8 +659,8 @@ def main():
     print("  Админ: /stats, /broadcast, /add_fa, /create_vote, /close_vote")
     app.run_polling()
 
-if __name__ == "__main__":
-    main()
+# ==================== КОМАНДЫ МЕНЮ ====================
+
 async def set_commands(app: Application):
     commands = [
         ("start", "🚀 Запустить бота и получить 100 FA"),
@@ -675,11 +675,12 @@ async def set_commands(app: Application):
     await app.bot.set_my_commands([(cmd, desc) for cmd, desc in commands])
     print("✅ Команды зарегистрированы в Telegram")
 
+# ==================== ЗАПУСК ====================
+
 def main():
     init_db()
     app = Application.builder().token(TOKEN).build()
     
-    # Пользовательские команды
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("balance", balance_command))
     app.add_handler(CommandHandler("profile", profile_command))
@@ -689,17 +690,17 @@ def main():
     app.add_handler(CommandHandler("vote", vote_command))
     app.add_handler(CommandHandler("results", results_command))
     
-    # Админ-команды
     app.add_handler(CommandHandler("stats", admin_stats))
     app.add_handler(CommandHandler("broadcast", admin_broadcast))
     app.add_handler(CommandHandler("add_fa", admin_add_fa))
     app.add_handler(CommandHandler("create_vote", admin_create_vote))
     app.add_handler(CommandHandler("close_vote", admin_close_vote))
     
-    # Регистрируем команды в меню Telegram
     import asyncio
     asyncio.get_event_loop().run_until_complete(set_commands(app))
     
     print("🤖 Бот запущен!")
-    print("📌 Команды зарегистрированы, появится кнопка меню")
     app.run_polling()
+
+if __name__ == "__main__":
+    main()
