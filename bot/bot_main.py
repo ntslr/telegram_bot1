@@ -18,11 +18,9 @@ logging.basicConfig(level=logging.INFO)
 # ==================== БАЗА ДАННЫХ ====================
 
 def init_db():
-    """Создаёт все таблицы"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Таблица пользователей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
@@ -35,7 +33,6 @@ def init_db():
         )
     ''')
     
-    # Таблица логов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +43,6 @@ def init_db():
         )
     ''')
     
-    # Таблица NFT бейджей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS nft_badges (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +53,6 @@ def init_db():
         )
     ''')
     
-    # Таблица голосований
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS votings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,7 +66,6 @@ def init_db():
         )
     ''')
     
-    # Таблица голосов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS votes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -303,6 +297,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/list_votes - список голосований\n"
         "/vote <id> <номер> - проголосовать\n"
         "/results <id> - результаты голосования\n"
+        "/privacy - политика конфиденциальности\n"
         "/help - помощь",
         parse_mode="Markdown"
     )
@@ -311,7 +306,7 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     log_action(telegram_id, "open_wallet_menu")
     
-    WEB_APP_URL = "https://telegram-bot1-netslayer7.waw0.amvera.tech"
+    WEB_APP_URL = "https://telegram-bot1-netslayer7.waw0.amvera.tech/"
     
     keyboard = [[InlineKeyboardButton("🏠 Открыть Mini App", web_app=WebAppInfo(url=WEB_APP_URL))]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -448,6 +443,21 @@ async def results_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     log_action(telegram_id, "view_results", f"voting_{voting_id}")
     await update.message.reply_text(message, parse_mode="Markdown")
+
+# ==================== КОМАНДА PRIVACY ====================
+
+async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📋 *Политика конфиденциальности*\n\n"
+        "Бот собирает следующие данные:\n"
+        "• Telegram ID и имя пользователя\n"
+        "• Адрес криптокошелька (если привязан)\n"
+        "• История действий (команды, голосования)\n\n"
+        "Данные используются только для работы бота\n"
+        "и не передаются третьим лицам.\n\n"
+        "По вопросам удаления данных пишите администратору.",
+        parse_mode="Markdown"
+    )
 
 # ==================== АДМИН-КОМАНДЫ ====================
 
@@ -586,7 +596,6 @@ async def admin_create_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
     
-    # Рассылка уведомления
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT telegram_id FROM users')
@@ -628,37 +637,6 @@ async def admin_close_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔒 Голосование #{voting_id} закрыто")
     log_action(telegram_id, "close_vote", f"voting_{voting_id}")
 
-# ==================== ЗАПУСК ====================
-
-def main():
-    init_db()
-    app = Application.builder().token(TOKEN).build()
-    
-    # Пользовательские команды
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("balance", balance_command))
-    app.add_handler(CommandHandler("profile", profile_command))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("wallet", wallet_command))
-    app.add_handler(CommandHandler("list_votes", list_votes_command))
-    app.add_handler(CommandHandler("vote", vote_command))
-    app.add_handler(CommandHandler("results", results_command))
-    
-    # Админ-команды
-    app.add_handler(CommandHandler("stats", admin_stats))
-    app.add_handler(CommandHandler("broadcast", admin_broadcast))
-    app.add_handler(CommandHandler("add_fa", admin_add_fa))
-    app.add_handler(CommandHandler("create_vote", admin_create_vote))
-    app.add_handler(CommandHandler("close_vote", admin_close_vote))
-    
-    print("🤖 Бот запущен!")
-    print("📁 База данных: /data/students.db")
-    print("\n📌 Команды:")
-    print("  /start, /balance, /profile, /wallet")
-    print("  /list_votes, /vote, /results")
-    print("  Админ: /stats, /broadcast, /add_fa, /create_vote, /close_vote")
-    app.run_polling()
-
 # ==================== КОМАНДЫ МЕНЮ ====================
 
 async def set_commands(app: Application):
@@ -670,6 +648,7 @@ async def set_commands(app: Application):
         ("list_votes", "🗳️ Список активных голосований"),
         ("vote", "🗳️ Проголосовать: /vote <id> <номер>"),
         ("results", "📊 Результаты голосования"),
+        ("privacy", "📋 Политика конфиденциальности"),
         ("help", "❓ Помощь по командам"),
     ]
     await app.bot.set_my_commands([(cmd, desc) for cmd, desc in commands])
@@ -689,6 +668,7 @@ def main():
     app.add_handler(CommandHandler("list_votes", list_votes_command))
     app.add_handler(CommandHandler("vote", vote_command))
     app.add_handler(CommandHandler("results", results_command))
+    app.add_handler(CommandHandler("privacy", privacy_command))
     
     app.add_handler(CommandHandler("stats", admin_stats))
     app.add_handler(CommandHandler("broadcast", admin_broadcast))
