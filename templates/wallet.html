@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FA Ecosystem - Привязка кошелька</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .balance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 24px;
+            padding: 24px;
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+        .balance-value {
+            font-size: 48px;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+        .info-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button.secondary {
+            background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            border: 1px solid var(--tg-theme-button-color);
+        }
+        .status {
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .status.info { background: #2196F3; color: white; }
+        .status.success { background: #4CAF50; color: white; }
+        .status.error { background: #f44336; color: white; }
+        .hidden { display: none; }
+        input {
+            width: 100%;
+            padding: 12px;
+            background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            border-radius: 12px;
+            margin: 10px 0;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        .manual-input {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(128, 128, 128, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="balance-card">
+            <div>💰 FA BALANCE</div>
+            <div class="balance-value" id="balance">0</div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-row"><span>👤 Имя</span><span id="first_name">-</span></div>
+            <div class="info-row"><span>🔗 Кошелёк</span><span id="wallet_status">❌ Не привязан</span></div>
+        </div>
+
+        <div id="status" class="status info">⚠️ Нажмите кнопку для привязки кошелька</div>
+
+        <button id="connectBtn">🦊 Подключить MetaMask</button>
+        <button id="manualBtn" class="secondary">✏️ Ввести адрес вручную</button>
+
+        <div id="manualSection" class="manual-input hidden">
+            <p style="margin-bottom: 10px; font-size: 14px;">Введите адрес вашего кошелька:</p>
+            <input type="text" id="manualAddress" placeholder="0x...">
+            <button id="submitManualBtn">✅ Подтвердить</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const telegramId = tg.initDataUnsafe.user?.id;
+        const firstName = tg.initDataUnsafe.user?.first_name;
+
+        let currentUser = null;
+
+        // --- Валидация адреса Ethereum ---
+        function isValidEthereumAddress(address) {
+            return /^0x[a-fA-F0-9]{40}$/.test(address);
+        }
+
+        // --- Загрузка профиля ---
+        async function loadProfile() {
+            if (!telegramId) return;
+
+            try {
+                const response = await fetch(`/api/profile/${telegramId}`);
+                currentUser = await response.json();
+
+                document.getElementById('balance').textContent = currentUser.fa_balance || 0;
+                document.getElementById('first_name').textContent = currentUser.first_name || firstName;
+
+                if (currentUser.wallet_verified && currentUser.wallet_address) {
+                    const shortAddr = currentUser.wallet_address.slice(0, 6) + '...' + currentUser.wallet_address.slice(-4);
+                    document.getElementById('wallet_status').innerHTML = `✅ ${shortAddr}`;
+                    document.getElementById('connectBtn').style.display = 'none';
+                    document.getElementById('manualBtn').style.display = 'none';
+                    document.getElementById('manualSection').classList.add('hidden');
+                    document.getElementById('status').innerHTML = '✅ Кошелёк привязан!';
+                    document.getElementById('status').className = 'status success';
+                } else {
+                    document.getElementById('connectBtn').style.display = 'block';
+                    document.getElementById('manualBtn').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки профиля:', error);
+            }
+        }
+
+        // --- Отправка запроса на привязку ---
+        async function sendVerification(walletAddress) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '🔄 Отправка запроса...';
+            statusDiv.className = 'status info';
+
+            try {
+                const response = await fetch('/api/verify_wallet_manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegram_id: telegramId,
+                        wallet_address: walletAddress
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    statusDiv.innerHTML = '✅ ' + result.message;
+                    statusDiv.className = 'status success';
+                    tg.showAlert(result.message);
+                    loadProfile();
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (result.detail || 'Ошибка привязки');
+                    statusDiv.className = 'status error';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                statusDiv.className = 'status error';
+            }
+        }
+
+        // --- Подключение через MetaMask (десктоп) ---
+        async function connectMetaMask() {
+            const statusDiv = document.getElementById('status');
+
+            if (typeof window.ethereum === 'undefined') {
+                statusDiv.innerHTML = '❌ MetaMask не установлен! Используйте ручной ввод.';
+                statusDiv.className = 'status error';
+                document.getElementById('manualSection').classList.remove('hidden');
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = '🔄 Подключение к MetaMask...';
+                statusDiv.className = 'status info';
+
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                const walletAddress = accounts[0];
+
+                statusDiv.innerHTML = '🔄 Получение nonce...';
+
+                const nonceResponse = await fetch('/api/get_nonce', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegram_id: telegramId })
+                });
+
+                const nonceData = await nonceResponse.json();
+
+                statusDiv.innerHTML = '🔄 Подпишите сообщение в MetaMask...';
+
+                const signature = await ethereum.request({
+                    method: 'personal_sign',
+                    params: [nonceData.message, walletAddress]
+                });
+
+                statusDiv.innerHTML = '🔄 Отправка подписи...';
+
+                const verifyResponse = await fetch('/api/verify_wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegram_id: telegramId,
+                        wallet_address: walletAddress,
+                        signature: signature
+                    })
+                });
+
+                const result = await verifyResponse.json();
+
+                if (result.success) {
+                    statusDiv.innerHTML = '✅ ' + result.message;
+                    statusDiv.className = 'status success';
+                    tg.showAlert(result.message);
+                    loadProfile();
+                } else {
+                    statusDiv.innerHTML = '❌ ' + (result.detail || 'Ошибка');
+                    statusDiv.className = 'status error';
+                }
+
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Ошибка: ' + error.message;
+                statusDiv.className = 'status error';
+            }
+        }
+
+        // --- Ручной ввод адреса ---
+        function showManualInput() {
+            document.getElementById('manualSection').classList.toggle('hidden');
+        }
+
+        async function submitManualAddress() {
+            const addressInput = document.getElementById('manualAddress');
+            const walletAddress = addressInput.value.trim();
+
+            if (!isValidEthereumAddress(walletAddress)) {
+                tg.showAlert('❌ Неверный формат адреса. Адрес должен начинаться с 0x и содержать 40 hex-символов.');
+                return;
+            }
+
+            await sendVerification(walletAddress);
+            addressInput.value = '';
+            document.getElementById('manualSection').classList.add('hidden');
+        }
+
+        // --- Обработчики кнопок ---
+        document.getElementById('connectBtn').onclick = connectMetaMask;
+        document.getElementById('manualBtn').onclick = showManualInput;
+        document.getElementById('submitManualBtn').onclick = submitManualAddress;
+
+        // Загрузка профиля при старте
+        loadProfile();
+    </script>
+</body>
+</html>

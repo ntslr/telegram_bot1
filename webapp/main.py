@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import sqlite3
@@ -356,3 +356,44 @@ async def root():
     return HTMLResponse(HTML_PAGE)
 
 print("✅ Mini App сервер загружен")
+@app.post("/api/verify_wallet_manual")
+async def verify_wallet_manual(request: Request):
+    """Привязка кошелька через ручной ввод адреса (без подписи)"""
+    data = await request.json()
+    telegram_id = data.get("telegram_id")
+    wallet_address = data.get("wallet_address")
+    
+    # Простая валидация адреса Ethereum
+    import re
+    if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
+        raise HTTPException(status_code=400, detail="Неверный формат адреса")
+    
+    conn = sqlite3.connect('/data/students.db')
+    cursor = conn.cursor()
+    
+    # Проверяем, не привязан ли уже кошелёк
+    cursor.execute('SELECT wallet_verified FROM users WHERE telegram_id = ?', (telegram_id,))
+    user = cursor.fetchone()
+    if user and user[0]:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Кошелёк уже привязан")
+    
+    # Сохраняем адрес
+    cursor.execute('UPDATE users SET wallet_address = ?, wallet_verified = 1 WHERE telegram_id = ?',
+                   (wallet_address, telegram_id))
+    
+    # Начисляем бонус
+    cursor.execute('UPDATE users SET fa_balance = fa_balance + 100 WHERE telegram_id = ?', (telegram_id,))
+    
+    # Логируем
+    cursor.execute('INSERT INTO logs (telegram_id, action, details, created_at) VALUES (?, ?, ?, ?)',
+                   (telegram_id, "wallet_verified_manual", wallet_address, datetime.now().isoformat()))
+    
+    # Добавляем NFT бейдж
+    cursor.execute('INSERT INTO nft_badges (telegram_id, badge_type, badge_name, issued_at) VALUES (?, ?, ?, ?)',
+                   (telegram_id, "wallet_verified", "🔗 Pioneer", datetime.now().isoformat()))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"success": True, "message": "Кошелёк привязан! +100 FA, получен бейдж Pioneer"}
